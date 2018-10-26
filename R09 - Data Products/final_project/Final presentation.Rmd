@@ -1,0 +1,56 @@
+---
+title: "Developing Data Products Course Project"
+author: "Davy Meesemaecker"
+date: "15/2/2018"
+output:
+  ioslides_presentation: default
+  slidy_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+
+This peer assessed assignment has two parts :
+
+- Create a Shiny application and deploy it on Rstudio's servers. 
+- Use Slidify or Rstudio Presenter to prepare a reproducible pitch presentation about the application.
+
+## The application
+
+For the application, I used a population dataset from french population in 2009 available here
+<a href="http://sql.sh/736-base-donnees-villes-francaises">Sql.sh</a>. In it, we'll find the population for around 36700 cities (called communes in french).
+
+What can you do with the application ?
+
+- The left side with two different sliders in the grey area. First slider allows you to define the range of population you'd like to see. This range goes from 0 to 2 300 000. The second slider lets you choose the number of breaks in the histogram with a range from 10 to 100.
+
+- The right side with a table on top listing all cities included in the range you previously selected and a histogram below gives you the estimate of the population range distribution.
+
+## The data
+
+Let's take a short look at the code and data before it is transformed into an application :
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+villes <- read.csv("villes_france.csv")
+villes <- villes[, c("Ozan", "X618", "X4.91667", "X46.3833")]
+colnames(villes) <- c("Ville", "Population", "lng", "lat")
+villes <- arrange(villes, desc(Population))
+head(villes)
+```
+
+
+## Where can you find the application ?
+
+The application can be found here :
+
+<a href="https://dasmey.shinyapps.io/final_project/">Application</a>
+
+You can also find the code here :
+
+<a href="https://github.com/dasmey/Developing-Data-Products/tree/gh-pages/final_project">Code</a>
+
+

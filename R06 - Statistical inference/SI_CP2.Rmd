@@ -1,0 +1,101 @@
+---
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+**Statistical Inference - Course Project Part 2**
+=================================================
+
+*Author : Davy Meesemaecker*
+
+**Overview**
+
+Now in the second portion of the project, we're going to analyze the ToothGrowth data in the R datasets package.
+
+1. Load the ToothGrowth data and perform some basic exploratory data analyses
+   Provide a basic summary of the data.
+2. Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. (Only use    the techniques from class, even if there's other approaches worth considering)
+3. State your conclusions and the assumptions needed for your conclusions.
+
+1 : Exploratory analysis
+------------------------
+
+Let's start with the required libraries
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(datasets)
+library(dplyr)
+```
+
+Now we can load the data with
+```{r}
+data("ToothGrowth")
+head(ToothGrowth)
+```
+
+Let's have a closer look at the data
+```{r}
+str(ToothGrowth)
+summary(ToothGrowth)
+```
+
+So the data contains 60 observations on 3 variables. Thanks to help("ToothGrowth"), we also learn that the response is the length of odontoblasts (cells responsible for tooth growth) in 60 guinea pigs. Each animal received one of three dose levels of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods, (orange juice or ascorbic acid (a form of vitamin C and coded as VC).
+
+By reading, we should then have 3 levels for dose and 2 levels for supp. Let's check if it's fair and also check if we have Nas :
+```{r}
+unique(ToothGrowth$supp)
+unique(ToothGrowth$dose)
+sum(is.na(ToothGrowth))
+```
+
+Now we'd like to compare our data but we need to fix a problem. Our dose column class in numeric and we might convert it to a factor for our future plots :
+```{r}
+ToothGrowth$dose <- as.factor(ToothGrowth$dose)
+str(ToothGrowth)
+```
+
+Our dose class in now factor as expected, we can start ploting. We'll compare tooth length versus dose, given type of supplement.
+
+```{r}
+mean_ToothGrowth <- ToothGrowth %>%
+        group_by(dose, supp) %>%
+        summarize(len = mean(len))
+mean_ToothGrowth
+
+g <- ggplot(ToothGrowth, aes(x=dose, y=len))
+g + geom_point(data = ToothGrowth, aes(fill = factor(dose), colour = supp), size = 4, alpha = 0.5) +
+        geom_line(data = mean_ToothGrowth, aes(group = supp, colour = supp)) + 
+        facet_grid(~supp) +
+        labs(x = "Dose (Miligrams/Day)", y = "Length (Odontoblats)", title = "length vs dose, given type of supplement") + 
+        theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+2 - Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose
+---------------------------------------------------------------------------------------------
+
+When watching the previous plot, it seems like there's no difference between effects of supplement type on the tooth growth. We'll use t-test to try to confirm our hypothesis. Knowing from the help file 60 pigs received
+```{r}
+t.test(len ~ supp, data = ToothGrowth)
+```
+
+So, our p-value is 0.0606 which is greater than 0.05, meaning we can't reject the null hypothesis that there's no difference between effects of supplement type on tooth growth. How about dosage ? We can try with the lowest dosage, 0.5mg, 1mg and 2mg :
+```{r}
+t.test(len ~ supp, ToothGrowth[ToothGrowth$dose == .5, ])
+```
+
+P-value is here 0.006, so it's lower than 0.05, we then reject the null hypothesis and conclude that supplement type has an effect on tooth growth at a dosage of 0.5mg.
+```{r}
+t.test(len ~ supp, ToothGrowth[ToothGrowth$dose == 1, ])
+```
+P-value is here 0.001, so as above, we reject the null hypothesis and confirm that supplement type has an effect on tooth growth with a dosage of 1mg
+```{r}
+t.test(len ~ supp, ToothGrowth[ToothGrowth$dose == 2, ])
+```
+Here the p-value is 0.9639, a value much bigger than 0.05. We can't reject our null hypothesis here, meaning there's no difference between effects of supplement type on tooth growth with a 2mg dosage.
+
+3 : Conclusion
+--------------
+
+Based on the hypothesis tests we run earlier, we can conclude that there is no difference between using orange juice or ascorbic acid as supplement on the growth of tooth. However, when we look at specific dosage levels, there appears to be differences. For dosage levels of 0.5mg and 1mg, orange juice appears to be more effective on the growth of tooth when there's no difference with a 2mg level.

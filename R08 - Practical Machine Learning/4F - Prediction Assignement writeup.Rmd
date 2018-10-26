@@ -1,0 +1,115 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Davy Meesemaecker"
+date: "22/1/2018"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+# Executive summary
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+# data processing and exploratory data analysis
+
+Our very first step is to download the two datasets required to perform our analysis. First one is called pml with 160 columns and 19622 rows while second one is called validation with 160 variables and 20 rows.
+
+```{r}
+url1 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url2 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(url = url1, "pml-training.csv", method = "auto")
+download.file(url = url2, "pml-testing.csv", method = "auto")
+pml <- read.csv("pml-training.csv", na.strings = c("", "NA"))
+dim(pml)
+validation <- read.csv("pml-testing.csv", na.strings = c("", "NA"))
+dim(validation)
+```
+
+Now it's time to split our pml dataset into two different paritions. Training, composed of 80% random rows from pml and testing with the remaining 20%
+
+```{r}
+library(caret)
+set.seed(1305)
+partition <- createDataPartition(y = pml$classe, p = 0.8, list = FALSE)
+training <- pml[partition, ]
+(dim(training)[1]/dim(pml)[1])*100
+testing <- pml[-partition, ]
+dim(testing)[1]/dim(pml)[1]*100
+```
+
+We can start exploring our training data, let's check if we have NAs :
+
+```{r}
+sum(is.na(training))/(15699*160)
+```
+
+We have an important rate (0.61) of NAs in the training dataset, so we'll avoid using variables/columns with NAs on both training and testing.
+
+```{r}
+NAlocation <- apply(training, 2, function(x) sum(is.na(x)))
+training <- training[, which(NAlocation == 0)]
+dim(training)[2]
+testing <- testing[, which(NAlocation == 0)]
+dim(testing)[2]
+sum(is.na(training))
+
+```
+
+We'll also remove columns with unique values or very few variability in the dataset.
+
+```{r}
+zeroVar <- nearZeroVar(training)
+training <- training[, -zeroVar]
+dim(training)[2]
+testing <- testing[, -zeroVar]
+dim(testing)[2]
+```
+
+Finally we'll remove the X column(corresponding to the index), the user_name column and the timestamp columns (raw_timestamp_part1, raw_timestamp_part2 and cvtd_timestamp) as these columns shouldn't have any effect on the classe variable.
+
+```{r}
+training <- training[, -c(1:5)]
+dim(training)[2]
+testing <- testing[, -c(1:5)]
+dim(testing)[2]
+```
+
+# The model
+
+We've finished processing the data (54 columns remaining), it's now time to fit a model to predict the manner in which people people do the exercices. We'll use the classe column as the outcome and all other remaining variables as predictors. In my opinion, random forest seems to be the best model to use as we want to classify results in 5 different classes. We could use a simple decision tree but we'd like to use cross validation with enough trees (500) to avoid overfitting.
+
+```{r}
+library(randomForest)
+set.seed(2610)
+mdlRF <- randomForest(classe~., data = training, ntree = 500)
+mdlRF
+predRF <- predict(mdlRF, testing)
+conf <- confusionMatrix(predRF, testing$classe)
+conf
+```
+
+The model is very efficient, the accuracy is 99.847% on the test set and only misclassified 5/3923 rows. The expected out of sample error is 1 - accuracy for predictions made against the test set = 1 - 0.9985 = 0.0015 meaning there's only 0.15% chances we missclassify the way the exercice was performed. As our validation test has only 20 rows, we can expect our data to be correctly classified. Let's check out
+
+```{r}
+predValidation <- predict(mdlRF, validation)
+predValidation
+```
+
+Finally, what would happen if we use a bigger number of trees in our random forest ? As we had 53 predictors, which ones are the most influencial on the classe variable ?
+
+```{r}
+plot(randomForest(classe ~ ., testing, keep.forest=FALSE, ntree=2000), log="y")
+varImpPlot(mdlRF, pch = 16)
+```
+
+The error rate is stable when ntree gets bigger than 200, meaning we wouldn't improve much our model accuracy with a ntree equals to 2000. On the second plot, we can easily see the most influential variables are num_window and roll_belt.
